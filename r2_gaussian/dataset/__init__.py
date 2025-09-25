@@ -12,6 +12,7 @@ import sys
 import random
 import os.path as osp
 
+import cv2
 import numpy as np
 import torch
 import tifffile
@@ -81,10 +82,28 @@ class Scene:
         if queryfunc is not None:
             vol_pred = queryfunc(self.gaussians)['vol']
             vol_gt = self.vol_gt
-            np.save(osp.join(point_cloud_path, 'vol_gt.npy'), t2a(vol_gt))
-            tifffile.imwrite(osp.join(point_cloud_path, 'vol_gt.tif'), t2a(vol_gt))
-            np.save(osp.join(point_cloud_path, 'vol_pred.npy'), t2a(vol_pred))
-            tifffile.imwrite(osp.join(point_cloud_path, 'vol_pred.tif'), t2a(vol_pred))
+            vol_pred_a = t2a(vol_pred)
+            vol_gt_a = t2a(vol_gt)
+
+            np.save(osp.join(point_cloud_path, 'vol_gt.npy'), vol_gt_a)
+            with tifffile.TiffWriter(osp.join(point_cloud_path, 'vol_gt.tif'), imagej=True) as tif:
+                vol_gt_b16 = (vol_gt_a - vol_gt_a.min()) / (vol_gt_a.max() - vol_gt_a.min()) * 50000.0
+                vol_gt_b16 = vol_gt_b16.astype(np.uint16)
+                tif.write(vol_gt_b16[None, :, None, :, :])
+
+            vol_gt_ref = vol_gt[vol_gt.shape[0] // 2].detach().cpu().numpy()
+            vol_gt_ref = (vol_gt_ref - vol_gt_ref.min()) / (vol_gt_ref.max() - vol_gt_ref.min()) * 255.0
+            cv2.imwrite(osp.join(point_cloud_path, 'ref_gt.png'), vol_gt_ref.astype(np.uint8))
+
+            np.save(osp.join(point_cloud_path, 'vol_pred.npy'), vol_pred_a)
+            with tifffile.TiffWriter(osp.join(point_cloud_path, 'vol_pred.tif'), imagej=True) as tif:
+                vol_pred_b16 = (vol_pred_a - vol_pred_a.min()) / (vol_pred_a.max() - vol_pred_a.min()) * 50000.0
+                vol_pred_b16 = vol_pred_b16.astype(np.uint16)
+                tif.write(vol_pred_b16[None, :, None, :, :])
+
+            vol_pred_ref = vol_pred[vol_pred.shape[0] // 2].detach().cpu().numpy()
+            vol_pred_ref = (vol_pred_ref - vol_pred_ref.min()) / (vol_pred_ref.max() - vol_pred_ref.min()) * 255.0
+            cv2.imwrite(osp.join(point_cloud_path, 'ref_pred.png'), vol_pred_ref.astype(np.uint8))
 
     def getTrainCameras(self):
         return self.train_cameras

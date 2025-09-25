@@ -6,6 +6,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import tigre
+import tifffile
 import tigre.algorithms as algs
 from omegaconf import OmegaConf
 
@@ -141,8 +142,15 @@ def main(args: argparse.Namespace):
             OrderStrategy='random',
         )
 
+    ct = np.transpose(ct, axes=(2, 1, 0))
+    ct = np.flip(ct, axis=2)
     ct_file = output_dir / 'vol.npy'
     np.save(str(ct_file), ct)
+
+    with tifffile.TiffWriter(str(output_dir / 'vol.tif'), imagej=True) as tif:
+        ct_b16 = ((ct - ct.min()) / (ct.max() - ct.min()) * 50000.0).astype(np.uint16)
+        tif.write(ct_b16[None, :, None, :, :, None])
+
     print(f'CT image saved to {str(ct_file):s}')
 
     conf = OmegaConf.create({})
