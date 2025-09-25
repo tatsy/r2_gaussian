@@ -8,6 +8,7 @@ import numpy as np
 import tigre
 import tifffile
 import tigre.algorithms as algs
+from tqdm import tqdm
 from omegaconf import OmegaConf
 
 
@@ -42,7 +43,7 @@ def main(args: argparse.Namespace):
     angles = np.linspace(0, 2.0 * np.pi, len(files), endpoint=False)
 
     images = []
-    for i in range(len(files)):
+    for i in tqdm(range(len(files))):
         image = cv2.imread(str(files[i]), cv2.IMREAD_UNCHANGED)
         assert image is not None, f'Failed to read {str(files[i]):s}'
         assert image.dtype == np.uint16, f'Unsupported image type: {image.dtype}'

@@ -9,25 +9,23 @@
 # For inquiries contact  george.drettakis@inria.fr
 #
 
-import os
 import sys
 import os.path as osp
-from argparse import ArgumentParser, Namespace
+from argparse import Namespace, ArgumentParser
 
-sys.path.append("./")
 from r2_gaussian.utils.argument_utils import ParamGroup
 
 
 class ModelParams(ParamGroup):
     def __init__(self, parser, sentinel=False):
-        self._source_path = ""
-        self._model_path = ""
-        self.data_device = "cuda"
-        self.ply_path = ""  # Path to initialization point cloud (if None, we will try to find `init_*.npy`.)
+        self._source_path = ''
+        self._model_path = ''
+        self.data_device = 'cuda'
+        self.ply_path = ''  # Path to initialization point cloud (if None, we will try to find `init_*.npy`.)
         self.scale_min = 0.0005  # percent of volume size
         self.scale_max = 0.5  # percent of volume size
         self.eval = True
-        super().__init__(parser, "Loading Parameters", sentinel)
+        super().__init__(parser, 'Loading Parameters', sentinel)
 
     def extract(self, args):
         g = super().extract(args)
@@ -39,7 +37,7 @@ class PipelineParams(ParamGroup):
     def __init__(self, parser):
         self.compute_cov3D_python = False
         self.debug = False
-        super().__init__(parser, "Pipeline Parameters")
+        super().__init__(parser, 'Pipeline Parameters')
 
 
 class OptimizationParams(ParamGroup):
@@ -69,27 +67,28 @@ class OptimizationParams(ParamGroup):
         self.max_screen_size = None
         self.max_scale = None  # percent of volume size
         self.max_num_gaussians = 500_000
-        super().__init__(parser, "Optimization Parameters")
+        super().__init__(parser, 'Optimization Parameters')
 
 
 def get_combined_args(parser: ArgumentParser):
     cmdlne_string = sys.argv[1:]
-    cfgfile_string = "Namespace()"
+    cfgfile_string = 'Namespace()'
     args_cmdline = parser.parse_args(cmdlne_string)
 
     try:
-        cfgfilepath = osp.join(args_cmdline.model_path, "cfg_args")
-        print("Looking for config file in", cfgfilepath)
+        cfgfilepath = osp.join(args_cmdline.model_path, 'cfg_args')
+        print('Looking for config file in', cfgfilepath)
         with open(cfgfilepath) as cfg_file:
-            print("Config file found: {}".format(cfgfilepath))
+            print('Config file found: {}'.format(cfgfilepath))
             cfgfile_string = cfg_file.read()
     except TypeError:
-        print("Config file not found at")
+        print('Config file not found at')
         pass
     args_cfgfile = eval(cfgfile_string)
 
     merged_dict = vars(args_cfgfile).copy()
     for k, v in vars(args_cmdline).items():
-        if v != None:
+        if v is not None:
             merged_dict[k] = v
+
     return Namespace(**merged_dict)
