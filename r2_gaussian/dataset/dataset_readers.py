@@ -1,18 +1,18 @@
-import os
 import sys
-from typing import NamedTuple
-import numpy as np
-import os.path as osp
 import json
-import torch
 import pickle
+import os.path as osp
+from typing import NamedTuple
 
-sys.path.append("./")
-from r2_gaussian.utils.graphics_utils import BasicPointCloud, fetchPly
+import numpy as np
+import torch
+import tifffile
+
+sys.path.append('./')
 
 mode_id = {
-    "parallel": 0,
-    "cone": 1,
+    'parallel': 0,
+    'cone': 1,
 }
 
 
@@ -43,48 +43,44 @@ class SceneInfo(NamedTuple):
 def readBlenderInfo(path, eval):
     """Read blender format CT data."""
     # Read meta data
-    meta_data_path = osp.join(path, "meta_data.json")
-    with open(meta_data_path, "r") as handle:
+    meta_data_path = osp.join(path, 'meta_data.json')
+    with open(meta_data_path, 'r') as handle:
         meta_data = json.load(handle)
-    meta_data["vol"] = osp.join(path, meta_data["vol"])
+    meta_data['vol'] = osp.join(path, meta_data['vol'])
 
-    if not "dVoxel" in meta_data["scanner"]:
-        meta_data["scanner"]["dVoxel"] = list(
-            np.array(meta_data["scanner"]["sVoxel"])
-            / np.array(meta_data["scanner"]["nVoxel"])
+    if 'dVoxel' not in meta_data['scanner']:
+        meta_data['scanner']['dVoxel'] = list(
+            np.array(meta_data['scanner']['sVoxel']) / np.array(meta_data['scanner']['nVoxel'])
         )
-    if not "dDetector" in meta_data["scanner"]:
-        meta_data["scanner"]["dDetector"] = list(
-            np.array(meta_data["scanner"]["sDetector"])
-            / np.array(meta_data["scanner"]["nDetector"])
+    if 'dDetector' not in meta_data['scanner']:
+        meta_data['scanner']['dDetector'] = list(
+            np.array(meta_data['scanner']['sDetector']) / np.array(meta_data['scanner']['nDetector'])
         )
 
-    #! We will scale the scene so that the volume of interest is in [-1, 1]^3 cube.
-    scene_scale = 2 / max(meta_data["scanner"]["sVoxel"])
+    # We will scale the scene so that the volume of interest is in [-1, 1]^3 cube.
+    scene_scale = 2 / max(meta_data['scanner']['sVoxel'])
     for key_to_scale in [
-        "dVoxel",
-        "sVoxel",
-        "sDetector",
-        "dDetector",
-        "offOrigin",
-        "offDetector",
-        "DSD",
-        "DSO",
+        'dVoxel',
+        'sVoxel',
+        'sDetector',
+        'dDetector',
+        'offOrigin',
+        'offDetector',
+        'DSD',
+        'DSO',
     ]:
-        meta_data["scanner"][key_to_scale] = (
-            np.array(meta_data["scanner"][key_to_scale]) * scene_scale
-        ).tolist()
+        meta_data['scanner'][key_to_scale] = (np.array(meta_data['scanner'][key_to_scale]) * scene_scale).tolist()
 
     cam_infos = readCTameras(meta_data, path, eval, scene_scale)
-    train_cam_infos = cam_infos["train"]
-    test_cam_infos = cam_infos["test"]
+    train_cam_infos = cam_infos['train']
+    test_cam_infos = cam_infos['test']
 
-    vol_gt = torch.from_numpy(np.load(meta_data["vol"])).float().cuda()
+    vol_gt = torch.from_numpy(np.load(meta_data['vol'])).float().cuda()
 
     scene_info = SceneInfo(
         train_cameras=train_cam_infos,
         test_cameras=test_cam_infos,
-        scanner_cfg=meta_data["scanner"],
+        scanner_cfg=meta_data['scanner'],
         vol=vol_gt,
         scene_scale=scene_scale,
     )
@@ -93,45 +89,51 @@ def readBlenderInfo(path, eval):
 
 def readCTameras(meta_data, source_path, eval=False, scene_scale=1.0):
     """Read camera info."""
-    cam_cfg = meta_data["scanner"]
+    cam_cfg = meta_data['scanner']
 
     if eval:
-        splits = ["train", "test"]
+        splits = ['train', 'test']
     else:
-        splits = ["train"]
+        splits = ['train']
 
-    cam_infos = {"train": [], "test": []}
+    cam_infos = {'train': [], 'test': []}
     for split in splits:
-        split_info = meta_data["proj_" + split]
+        split_info = meta_data['proj_' + split]
         n_split = len(split_info)
-        if split == "test":
-            uid_offset = len(meta_data["proj_train"])
+        if split == 'test':
+            uid_offset = len(meta_data['proj_train'])
         else:
             uid_offset = 0
         for i_split in range(n_split):
-            sys.stdout.write("\r")
-            sys.stdout.write(f"Reading camera {i_split + 1}/{n_split} for {split}")
+            sys.stdout.write('\r')
+            sys.stdout.write(f'Reading camera {i_split + 1}/{n_split} for {split}')
             sys.stdout.flush()
 
-            frame_info = meta_data["proj_" + split][i_split]
-            frame_angle = frame_info["angle"]
+            frame_info = meta_data['proj_' + split][i_split]
+            frame_angle = frame_info['angle']
 
             # CT 'transform_matrix' is a camera-to-world transform
-            c2w = angle2pose(cam_cfg["DSO"], frame_angle)  # c2w
+            c2w = angle2pose(cam_cfg['DSO'], frame_angle)  # c2w
             # get the world-to-camera transform and set R, T
             w2c = np.linalg.inv(c2w)
-            R = np.transpose(
-                w2c[:3, :3]
-            )  # R is stored transposed due to 'glm' in CUDA code
+            R = np.transpose(w2c[:3, :3])  # R is stored transposed due to 'glm' in CUDA code
             T = w2c[:3, 3]
 
-            image_path = osp.join(source_path, frame_info["file_path"])
-            image = np.load(image_path) * scene_scale
-            # Note, dDetector is [v, u] not [u, v]
-            FovX = np.arctan2(cam_cfg["sDetector"][1] / 2, cam_cfg["DSD"]) * 2
-            FovY = np.arctan2(cam_cfg["sDetector"][0] / 2, cam_cfg["DSD"]) * 2
+            image_path = osp.join(source_path, frame_info['file_path'])
 
-            mode = mode_id[cam_cfg["mode"]]
+            ext = osp.splitext(image_path)[1]
+            if ext == '.npy':
+                image = np.load(image_path) * scene_scale
+            elif ext == '.tif' or ext == '.tiff':
+                image = tifffile.imread(image_path) * scene_scale
+            else:
+                raise NotImplementedError(f'Unknown image format {ext}.')
+
+            # Note, dDetector is [v, u] not [u, v]
+            FovX = np.arctan2(cam_cfg['sDetector'][1] / 2, cam_cfg['DSD']) * 2
+            FovY = np.arctan2(cam_cfg['sDetector'][0] / 2, cam_cfg['DSD']) * 2
+
+            mode = mode_id[cam_cfg['mode']]
 
             cam_info = CameraInfo(
                 uid=i_split + uid_offset,
@@ -142,14 +144,14 @@ def readCTameras(meta_data, source_path, eval=False, scene_scale=1.0):
                 FovX=FovX,
                 image=image,
                 image_path=image_path,
-                image_name=osp.basename(image_path).split(".")[0],
-                width=cam_cfg["nDetector"][1],
-                height=cam_cfg["nDetector"][0],
+                image_name=osp.basename(image_path).split('.')[0],
+                width=cam_cfg['nDetector'][1],
+                height=cam_cfg['nDetector'][0],
                 mode=mode,
                 scanner_cfg=cam_cfg,
             )
             cam_infos[split].append(cam_info)
-        sys.stdout.write("\n")
+        sys.stdout.write('\n')
     return cam_infos
 
 
@@ -194,86 +196,80 @@ def angle2pose(DSO, angle):
 def readNAFInfo(path, eval):
     """Read blender format CT data."""
     # Read data
-    with open(path, "rb") as f:
+    with open(path, 'rb') as f:
         data = pickle.load(f)
     # ! NAF scanner are measured in mm, but projections are measured in m. Therefore we need to / 1000.
     scanner_cfg = {
-        "DSD": data["DSD"] / 1000,
-        "DSO": data["DSO"] / 1000,
-        "nVoxel": data["nVoxel"],
-        "dVoxel": (np.array(data["dVoxel"]) / 1000).tolist(),
-        "sVoxel": (np.array(data["nVoxel"]) * np.array(data["dVoxel"]) / 1000).tolist(),
-        "nDetector": data["nDetector"],
-        "dDetector": (np.array(data["dDetector"]) / 1000).tolist(),
-        "sDetector": (
-            np.array(data["nDetector"]) * np.array(data["dDetector"]) / 1000
-        ).tolist(),
-        "offOrigin": (np.array(data["offOrigin"]) / 1000).tolist(),
-        "offDetector": (np.array(data["offDetector"]) / 1000).tolist(),
-        "totalAngle": data["totalAngle"],
-        "startAngle": data["startAngle"],
-        "accuracy": data["accuracy"],
-        "mode": data["mode"],
-        "filter": None,
+        'DSD': data['DSD'] / 1000,
+        'DSO': data['DSO'] / 1000,
+        'nVoxel': data['nVoxel'],
+        'dVoxel': (np.array(data['dVoxel']) / 1000).tolist(),
+        'sVoxel': (np.array(data['nVoxel']) * np.array(data['dVoxel']) / 1000).tolist(),
+        'nDetector': data['nDetector'],
+        'dDetector': (np.array(data['dDetector']) / 1000).tolist(),
+        'sDetector': (np.array(data['nDetector']) * np.array(data['dDetector']) / 1000).tolist(),
+        'offOrigin': (np.array(data['offOrigin']) / 1000).tolist(),
+        'offDetector': (np.array(data['offDetector']) / 1000).tolist(),
+        'totalAngle': data['totalAngle'],
+        'startAngle': data['startAngle'],
+        'accuracy': data['accuracy'],
+        'mode': data['mode'],
+        'filter': None,
     }
 
     #! We will scale the scene so that the volume of interest is in [-1, 1]^3 cube.
-    scene_scale = 2 / max(scanner_cfg["sVoxel"])
+    scene_scale = 2 / max(scanner_cfg['sVoxel'])
     for key_to_scale in [
-        "dVoxel",
-        "sVoxel",
-        "sDetector",
-        "dDetector",
-        "offOrigin",
-        "offDetector",
-        "DSD",
-        "DSO",
+        'dVoxel',
+        'sVoxel',
+        'sDetector',
+        'dDetector',
+        'offOrigin',
+        'offDetector',
+        'DSD',
+        'DSO',
     ]:
-        scanner_cfg[key_to_scale] = (
-            np.array(scanner_cfg[key_to_scale]) * scene_scale
-        ).tolist()
+        scanner_cfg[key_to_scale] = (np.array(scanner_cfg[key_to_scale]) * scene_scale).tolist()
 
     # Generate camera infos
     if eval:
-        splits = ["train", "test"]
+        splits = ['train', 'test']
     else:
-        splits = ["train"]
-    cam_infos = {"train": [], "test": []}
+        splits = ['train']
+    cam_infos = {'train': [], 'test': []}
     for split in splits:
-        if split == "test":
-            uid_offset = data["numTrain"]
-            n_split = data["numVal"]
+        if split == 'test':
+            uid_offset = data['numTrain']
+            n_split = data['numVal']
         else:
             uid_offset = 0
-            n_split = data["numTrain"]
-        if split == "test" and "val" in data:
-            data_split = data["val"]
+            n_split = data['numTrain']
+        if split == 'test' and 'val' in data:
+            data_split = data['val']
         else:
             data_split = data[split]
-        angles = data_split["angles"]
-        projs = data_split["projections"]
+        angles = data_split['angles']
+        projs = data_split['projections']
 
         for i_split in range(n_split):
-            sys.stdout.write("\r")
-            sys.stdout.write(f"Reading camera {i_split + 1}/{n_split} for {split}")
+            sys.stdout.write('\r')
+            sys.stdout.write(f'Reading camera {i_split + 1}/{n_split} for {split}')
             sys.stdout.flush()
 
             frame_angle = angles[i_split]
-            c2w = angle2pose(scanner_cfg["DSO"], frame_angle)
+            c2w = angle2pose(scanner_cfg['DSO'], frame_angle)
             # get the world-to-camera transform and set R, T
             w2c = np.linalg.inv(c2w)
-            R = np.transpose(
-                w2c[:3, :3]
-            )  # R is stored transposed due to 'glm' in CUDA code
+            R = np.transpose(w2c[:3, :3])  # R is stored transposed due to 'glm' in CUDA code
             T = w2c[:3, 3]
 
             image = projs[i_split] * scene_scale
 
             # Note, dDetector is [v, u] not [u, v]
-            FovX = np.arctan2(scanner_cfg["sDetector"][1] / 2, scanner_cfg["DSD"]) * 2
-            FovY = np.arctan2(scanner_cfg["sDetector"][0] / 2, scanner_cfg["DSD"]) * 2
+            FovX = np.arctan2(scanner_cfg['sDetector'][1] / 2, scanner_cfg['DSD']) * 2
+            FovY = np.arctan2(scanner_cfg['sDetector'][0] / 2, scanner_cfg['DSD']) * 2
 
-            mode = mode_id[scanner_cfg["mode"]]
+            mode = mode_id[scanner_cfg['mode']]
 
             cam_info = CameraInfo(
                 uid=i_split + uid_offset,
@@ -284,19 +280,19 @@ def readNAFInfo(path, eval):
                 FovX=FovX,
                 image=image,
                 image_path=None,
-                image_name=f"{i_split + uid_offset:04d}",
-                width=scanner_cfg["nDetector"][1],
-                height=scanner_cfg["nDetector"][0],
+                image_name=f'{i_split + uid_offset:04d}',
+                width=scanner_cfg['nDetector'][1],
+                height=scanner_cfg['nDetector'][0],
                 mode=mode,
                 scanner_cfg=scanner_cfg,
             )
             cam_infos[split].append(cam_info)
-        sys.stdout.write("\n")
+        sys.stdout.write('\n')
 
     # Store other data
-    train_cam_infos = cam_infos["train"]
-    test_cam_infos = cam_infos["test"]
-    vol_gt = torch.from_numpy(data["image"]).float().cuda()
+    train_cam_infos = cam_infos['train']
+    test_cam_infos = cam_infos['test']
+    vol_gt = torch.from_numpy(data['image']).float().cuda()
     scene_info = SceneInfo(
         train_cameras=train_cam_infos,
         test_cameras=test_cam_infos,
@@ -308,6 +304,6 @@ def readNAFInfo(path, eval):
 
 
 sceneLoadTypeCallbacks = {
-    "Blender": readBlenderInfo,
-    "NAF": readNAFInfo,
+    'Blender': readBlenderInfo,
+    'NAF': readNAFInfo,
 }

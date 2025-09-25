@@ -11,10 +11,12 @@ dependencies = [
   "matplotlib>=3.10.6",
   "mkl>=2025.2.0",
   "numpy>=2.3.3",
+  "omegaconf>=2.3.0",
   "open3d>=0.19.0",
   "opencv-python>=4.11.0.86",
   "plyfile>=1.1.2",
   "pydicom>=3.0.1",
+  "pynrrd>=1.1.3",
   "pyvista>=0.46.3",
   "pyyaml>=6.0.2",
   "scikit-image>=0.25.2",
@@ -32,6 +34,7 @@ build = ["pytigre", "simple-knn", "xray-gaussian-rasterization-voxelization"]
 [dependency-groups]
 dev = [
   "flake8-pyproject>=1.2.3",
+  "ipython>=9.5.0",
   "mypy>=1.17.1",
   "ruff>=0.12.9",
 ]
