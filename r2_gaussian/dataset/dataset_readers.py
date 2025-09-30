@@ -6,7 +6,6 @@ from typing import NamedTuple
 
 import numpy as np
 import torch
-import tifffile
 
 sys.path.append('./')
 
@@ -124,8 +123,6 @@ def readCTameras(meta_data, source_path, eval=False, scene_scale=1.0):
             ext = osp.splitext(image_path)[1]
             if ext == '.npy':
                 image = np.load(image_path) * scene_scale
-            elif ext == '.tif' or ext == '.tiff':
-                image = tifffile.imread(image_path) * scene_scale
             else:
                 raise NotImplementedError(f'Unknown image format {ext}.')
 

@@ -87,9 +87,11 @@ class Scene:
 
             np.save(osp.join(point_cloud_path, 'vol_gt.npy'), vol_gt_a)
             with tifffile.TiffWriter(osp.join(point_cloud_path, 'vol_gt.tif'), imagej=True) as tif:
-                vol_gt_b16 = (vol_gt_a - vol_gt_a.min()) / (vol_gt_a.max() - vol_gt_a.min()) * 50000.0
-                vol_gt_b16 = vol_gt_b16.astype(np.uint16)
-                tif.write(vol_gt_b16[None, :, None, :, :])
+                tif.write(
+                    vol_gt.detach().cpu().numpy(),
+                    resolution=(1.0 / self.scanner_cfg['dVoxel'][1], 1.0 / self.scanner_cfg['dVoxel'][0]),
+                    metadata={'spacing': self.scanner_cfg['dVoxel'][2], 'axes': 'ZYX'},
+                )
 
             vol_gt_ref = vol_gt[vol_gt.shape[0] // 2].detach().cpu().numpy()
             vol_gt_ref = (vol_gt_ref - vol_gt_ref.min()) / (vol_gt_ref.max() - vol_gt_ref.min()) * 255.0
@@ -97,9 +99,11 @@ class Scene:
 
             np.save(osp.join(point_cloud_path, 'vol_pred.npy'), vol_pred_a)
             with tifffile.TiffWriter(osp.join(point_cloud_path, 'vol_pred.tif'), imagej=True) as tif:
-                vol_pred_b16 = (vol_pred_a - vol_pred_a.min()) / (vol_pred_a.max() - vol_pred_a.min()) * 50000.0
-                vol_pred_b16 = vol_pred_b16.astype(np.uint16)
-                tif.write(vol_pred_b16[None, :, None, :, :])
+                tif.write(
+                    vol_pred.detach().cpu().numpy(),
+                    resolution=(1.0 / self.scanner_cfg['dVoxel'][1], 1.0 / self.scanner_cfg['dVoxel'][0]),
+                    metadata={'spacing': self.scanner_cfg['dVoxel'][2], 'axes': 'ZYX'},
+                )
 
             vol_pred_ref = vol_pred[vol_pred.shape[0] // 2].detach().cpu().numpy()
             vol_pred_ref = (vol_pred_ref - vol_pred_ref.min()) / (vol_pred_ref.max() - vol_pred_ref.min()) * 255.0

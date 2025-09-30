@@ -7,6 +7,7 @@ readme = "README.md"
 license-files = ["LICENSE.md"]
 dependencies = [
   "cython>=3.1.4",
+  "h5py>=3.14.0",
   "imagecodecs>=2025.8.2",
   "matplotlib>=3.10.6",
   "mkl>=2025.2.0",
@@ -47,11 +48,13 @@ no-build-isolation-package = [
 ]
 
 [tool.uv.sources]
+r2_gaussian = { workspace = true }
 torch = [
   { marker = "sys_platform == 'win32'", index = "pytorch-cu124" },
   { marker = "sys_platform == 'linux'", index = "pytorch-cu124" },
   { marker = "sys_platform == 'darwin'", index = "pytorch-cpu" },
 ]
+
 torchvision = [
   { marker = "sys_platform == 'win32'", index = "pytorch-cu124" },
   { marker = "sys_platform == 'linux'", index = "pytorch-cu124" },

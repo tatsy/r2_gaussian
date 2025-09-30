@@ -62,6 +62,8 @@ def main(args: argparse.Namespace):
     if meta.clockwise:
         images = images[::-1]
 
+    n_voxels = max(images.shape[1], images.shape[2])
+
     train_angles = angles[train_proj]
     test_angles = angles[test_proj]
 
@@ -86,10 +88,10 @@ def main(args: argparse.Namespace):
     geo.nDetector = np.array([sino.shape[1], sino.shape[2]])
     geo.dDetector = np.array([pixel_size, pixel_size])
     geo.sDetector = geo.nDetector * geo.dDetector
-    geo.nVoxel = np.array([args.n_voxels, args.n_voxels, args.n_voxels])
+    geo.nVoxel = np.array([n_voxels, n_voxels, n_voxels], dtype=np.int32)
 
     delta = pixel_size * meta.sod / meta.sdd
-    geo.sVoxel = np.array([delta * args.n_voxels, delta * args.n_voxels, delta * args.n_voxels])
+    geo.sVoxel = np.array([delta * n_voxels, delta * n_voxels, delta * n_voxels])
     geo.dVoxel = geo.sVoxel / geo.nVoxel
 
     qualmeas = ['RMSE', 'SSD']
@@ -149,8 +151,11 @@ def main(args: argparse.Namespace):
     np.save(str(ct_file), ct)
 
     with tifffile.TiffWriter(str(output_dir / 'vol.tif'), imagej=True) as tif:
-        ct_b16 = ((ct - ct.min()) / (ct.max() - ct.min()) * 50000.0).astype(np.uint16)
-        tif.write(ct_b16[None, :, None, :, :, None])
+        tif.write(
+            ct,
+            resolution=(1.0 / geo.dVoxel[1], 1.0 / geo.dVoxel[0]),
+            metadata={'spacing': geo.dVoxel[2], 'axes': 'ZYX'},
+        )
 
     print(f'CT image saved to {str(ct_file):s}')
 
@@ -199,7 +204,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', type=str, required=True)
     parser.add_argument('-o', '--output', type=str, default='output')
-    parser.add_argument('--n_voxels', type=int, default=512)
     parser.add_argument('--n_views', type=int, default=-1, help='number of views (default: -1, all views)')
     parser.add_argument('--resize', type=int, default=-1, help='resize the input images to (default: -1, no resize)')
     parser.add_argument('--tigre_algo', type=str, default='fdk', choices=['fdk', 'sart', 'sart_tv', 'os_asd_pocs'])

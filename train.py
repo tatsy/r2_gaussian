@@ -21,7 +21,6 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-sys.path.append('./')
 from r2_gaussian.dataset import Scene
 from r2_gaussian.gaussian import GaussianModel, query, render, initialize_gaussian
 from r2_gaussian.arguments import ModelParams, PipelineParams, OptimizationParams
@@ -356,8 +355,8 @@ if __name__ == '__main__':
     op = OptimizationParams(parser)
     pp = PipelineParams(parser)
     parser.add_argument("--detect_anomaly", action="store_true", default=False)
-    parser.add_argument("--test_iterations", nargs="+", type=int, default=[5_000, 10_000, 20_000])
-    parser.add_argument("--save_iterations", nargs="+", type=int, default=[])
+    parser.add_argument("--test_iterations", nargs="+", type=int, default=[7_000, 15_000, 30_000])
+    parser.add_argument("--save_iterations", nargs="+", type=int, default=[7_000, 15_000, 30_000])
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[])
     parser.add_argument("--start_checkpoint", type=str, default=None)
