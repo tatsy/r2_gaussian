@@ -299,7 +299,9 @@ __global__ void __launch_bounds__(BLOCK3D_X *BLOCK3D_Y *BLOCK3D_Z) renderCUDA(co
     // rendering data to the frame and auxiliary buffers.
     if (inside) {
         n_contrib[voxel_id] = last_contributor;
-        for (int ch = 0; ch < CHANNELS; ch++) out_volume[ch * nVoxel_x * nVoxel_y * nVoxel_z + voxel_id] = C[ch];
+        for (int ch = 0; ch < CHANNELS; ch++) {
+            out_volume[ch * nVoxel_x * nVoxel_y * nVoxel_z + voxel_id] = C[ch];
+        }
     }
 }
 
