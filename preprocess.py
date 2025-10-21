@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 import cv2
+import yaml
 import numpy as np
 import tigre
 import tifffile
@@ -13,22 +14,23 @@ from omegaconf import OmegaConf
 
 
 def main(args: argparse.Namespace):
-    # JSON configuration
-    json_file = Path(args.input) / 'config.json'
-    if not json_file.exists():
-        raise FileNotFoundError(f'{str(json_file):s} not found!')
-    meta = OmegaConf.create(json.loads(json_file.read_text()))
-    print('Matadata:')
-    print(json.dumps(dict(meta), indent=4))
-    print('')
+    # YAML configuration
+    meta_file = Path(args.input) / 'meta.yml'
+    if not meta_file.exists():
+        raise FileNotFoundError(f'{str(meta_file):s} not found!')
+
+    with open(meta_file, mode='r', encoding='utf-8') as f:
+        meta = OmegaConf.create(yaml.safe_load(f))
+
+    print(yaml.dump({'metadata': dict(meta)}, indent=2))
 
     # Read the input file
-    target_dir = Path(args.input)
-    output_dir = target_dir / args.output
+    target_dir = Path(args.input, 'projections')
+    output_dir = Path(args.input) / args.output
     output_dir.mkdir(parents=True, exist_ok=True)
 
     pattern = re.compile(r'.*(\d+)\.tif')
-    files = target_dir.rglob('*.tif')
+    files = target_dir.glob('*.tif')
     files = sorted([f for f in files if pattern.match(f.name)])
     print(f'Found {len(files)} files')
 
@@ -203,7 +205,7 @@ def main(args: argparse.Namespace):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', type=str, required=True)
-    parser.add_argument('-o', '--output', type=str, default='output')
+    parser.add_argument('-o', '--output', type=str, default='r2g')
     parser.add_argument('--n_views', type=int, default=-1, help='number of views (default: -1, all views)')
     parser.add_argument('--resize', type=int, default=-1, help='resize the input images to (default: -1, no resize)')
     parser.add_argument('--tigre_algo', type=str, default='fdk', choices=['fdk', 'sart', 'sart_tv', 'os_asd_pocs'])

@@ -18,46 +18,47 @@
 #define GLM_FORCE_CUDA
 #include <glm/glm.hpp>
 
-namespace FORWARD
-{
-	// Perform initial steps for each Gaussian prior to rasterization.
-	void preprocess(int P, 
-		const float* orig_points,
-		const glm::vec3* scales,
-		const float scale_modifier,
-		const glm::vec4* rotations,
-		const float* opacities,
-		const float* cov3D_precomp,
-		const float* viewmatrix,
-		const float* projmatrix,
-		const glm::vec3* cam_pos,
-		const int W, int H,
-		const float focal_x, float focal_y,
-		const float tan_fovx, float tan_fovy,
-		int* radii,
-		float2* points_xy_image,
-		float* depths,
-		float* cov3Ds,
-		float4* conic_opacity,
-		float* mus,
-		const dim3 grid,
-		uint32_t* tiles_touched,
-		bool prefiltered,
-		const int mode
-		);
+namespace FORWARD {
+// Perform initial steps for each Gaussian prior to rasterization.
+void preprocess(int P,
+                const float *orig_points,
+                const glm::vec3 *scales,
+                const float scale_modifier,
+                const glm::vec4 *rotations,
+                const float *opacities,
+                const float *cov3D_precomp,
+                const float *viewmatrix,
+                const float *projmatrix,
+                const glm::vec3 *cam_pos,
+                const int W,
+                int H,
+                const float focal_x,
+                float focal_y,
+                const float tan_fovx,
+                float tan_fovy,
+                int *radii,
+                float2 *points_xy_image,
+                float *depths,
+                float *cov3Ds,
+                float4 *conic_opacity,
+                float *mus,
+                const dim3 grid,
+                uint32_t *tiles_touched,
+                bool prefiltered,
+                const int mode);
 
-	// Main rasterization method.
-	void render(
-		const dim3 grid, dim3 block,
-		const uint2* ranges,
-		const uint32_t* point_list,
-		int W, int H,
-		const float2* points_xy_image,
-		const float4* conic_opacity,
-		const float* mus,
-		uint32_t* n_contrib,
-		float* out_color);
-}
-
+// Main rasterization method.
+void render(const dim3 grid,
+            dim3 block,
+            const uint2 *ranges,
+            const uint32_t *point_list,
+            int W,
+            int H,
+            const float2 *points_xy_image,
+            const float4 *conic_opacity,
+            const float *mus,
+            uint32_t *n_contrib,
+            float *out_color);
+}  // namespace FORWARD
 
 #endif
