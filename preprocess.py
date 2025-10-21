@@ -51,8 +51,11 @@ def main(args: argparse.Namespace):
         assert image.dtype == np.uint16, f'Unsupported image type: {image.dtype}'
 
         org_height, org_width = image.shape
-        if args.resize > 0:
-            image = cv2.resize(image, (args.resize, args.resize), interpolation=cv2.INTER_LINEAR)
+        if args.binning > 1:
+            b = args.binning
+            h, w = image.shape[:2]
+            assert h % b == 0 and w % b == 0, 'image size must be divisible by binning factor'
+            image = image.reshape(h // b, b, w // b, b).mean(axis=(1, 3))
 
         images.append(image)
 
@@ -207,7 +210,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--input', type=str, required=True)
     parser.add_argument('-o', '--output', type=str, default='r2g')
     parser.add_argument('--n_views', type=int, default=-1, help='number of views (default: -1, all views)')
-    parser.add_argument('--resize', type=int, default=-1, help='resize the input images to (default: -1, no resize)')
+    parser.add_argument('--binning', type=int, default=1, help='binning factor (default: 1)')
     parser.add_argument('--tigre_algo', type=str, default='fdk', choices=['fdk', 'sart', 'sart_tv', 'os_asd_pocs'])
     parser.add_argument('--tigre_iters', type=int, default=20)
     args = parser.parse_args()

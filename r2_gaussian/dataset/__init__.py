@@ -85,6 +85,10 @@ class Scene:
             vol_pred_a = t2a(vol_pred)
             vol_gt_a = t2a(vol_gt)
 
+            # NOTE: get axis order back to TIGRE settings
+            vol_gt = vol_gt.flip(dims=[2]).permute(2, 1, 0)
+            vol_pred = vol_pred.flip(dims=[2]).permute(2, 1, 0)
+
             np.save(osp.join(point_cloud_path, 'vol_gt.npy'), vol_gt_a)
             with tifffile.TiffWriter(osp.join(point_cloud_path, 'vol_gt.tif'), imagej=True) as tif:
                 tif.write(

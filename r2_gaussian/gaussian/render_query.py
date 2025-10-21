@@ -9,19 +9,20 @@
 # For inquiries contact  george.drettakis@inria.fr
 #
 import sys
-import torch
 import math
+
+import torch
 from xray_gaussian_rasterization_voxelization import (
-    GaussianRasterizationSettings,
+    GaussianVoxelizer,
     GaussianRasterizer,
     GaussianVoxelizationSettings,
-    GaussianVoxelizer,
+    GaussianRasterizationSettings,
 )
 
-sys.path.append("./")
-from r2_gaussian.gaussian.gaussian_model import GaussianModel
-from r2_gaussian.dataset.cameras import Camera
+sys.path.append('./')
 from r2_gaussian.arguments import PipelineParams
+from r2_gaussian.dataset.cameras import Camera
+from r2_gaussian.gaussian.gaussian_model import GaussianModel
 
 
 def query(
@@ -72,8 +73,8 @@ def query(
     )
 
     return {
-        "vol": vol_pred,
-        "radii": radii,
+        'vol': vol_pred,
+        'radii': radii,
     }
 
 
@@ -88,15 +89,10 @@ def render(
     """
 
     # Create zero tensor. We will use it to make pytorch return gradients of the 2D (screen-space) means
-    screenspace_points = (
-        torch.zeros_like(
-            pc.get_xyz, dtype=pc.get_xyz.dtype, requires_grad=True, device="cuda"
-        )
-        + 0
-    )
+    screenspace_points = torch.zeros_like(pc.get_xyz, dtype=pc.get_xyz.dtype, requires_grad=True, device='cuda') + 0
     try:
         screenspace_points.retain_grad()
-    except:
+    except Exception:
         pass
 
     # Set up rasterization configuration
@@ -108,7 +104,7 @@ def render(
         tanfovx = math.tan(viewpoint_camera.FoVx * 0.5)
         tanfovy = math.tan(viewpoint_camera.FoVy * 0.5)
     else:
-        raise ValueError("Unsupported mode!")
+        raise ValueError('Unsupported mode!')
 
     raster_settings = GaussianRasterizationSettings(
         image_height=int(viewpoint_camera.image_height),
@@ -153,8 +149,8 @@ def render(
     # Those Gaussians that were frustum culled or had a radius of 0 were not visible.
     # They will be excluded from value updates used in the splitting criteria.
     return {
-        "render": rendered_image,
-        "viewspace_points": screenspace_points,
-        "visibility_filter": radii > 0,
-        "radii": radii,
+        'render': rendered_image,
+        'viewspace_points': screenspace_points,
+        'visibility_filter': radii > 0,
+        'radii': radii,
     }
