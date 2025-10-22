@@ -243,7 +243,7 @@ int CudaRasterizer::Rasterizer::forward(std::function<char *(size_t)> geometryBu
                                    geomState.tiles_touched,
                                    prefiltered,
                                    mode),
-               debug)
+               debug);
 
     //! Although order does not matter in X-ray imaging, we keep the ordering process in 3DGS for simplity.
     //TODO Remove sorting part in the futre, if possible.
@@ -251,7 +251,7 @@ int CudaRasterizer::Rasterizer::forward(std::function<char *(size_t)> geometryBu
     // E.g., [2, 3, 0, 2, 1] -> [2, 5, 5, 7, 8]
     CHECK_CUDA(cub::DeviceScan::InclusiveSum(
                    geomState.scanning_space, geomState.scan_size, geomState.tiles_touched, geomState.point_offsets, P),
-               debug)
+               debug);
 
     // Retrieve total number of Gaussian instances to launch and resize aux buffers
     int num_rendered;
@@ -270,9 +270,10 @@ int CudaRasterizer::Rasterizer::forward(std::function<char *(size_t)> geometryBu
                                                 binningState.point_list_keys_unsorted,
                                                 binningState.point_list_unsorted,
                                                 radii,
-                                                tile_grid) CHECK_CUDA(, debug)
+                                                tile_grid);
+    CHECK_CUDA(, debug);
 
-        int bit = getHigherMsb(tile_grid.x * tile_grid.y);
+    int bit = getHigherMsb(tile_grid.x * tile_grid.y);
 
     // Sort complete list of (duplicated) Gaussian indices by keys
     CHECK_CUDA(cub::DeviceRadixSort::SortPairs(binningState.list_sorting_space,
@@ -284,15 +285,16 @@ int CudaRasterizer::Rasterizer::forward(std::function<char *(size_t)> geometryBu
                                                num_rendered,
                                                0,
                                                32 + bit),
-               debug)
+               debug);
 
     CHECK_CUDA(cudaMemset(imgState.ranges, 0, tile_grid.x * tile_grid.y * sizeof(uint2)), debug);
 
     // Identify start and end of per-tile workloads in sorted list
-    if (num_rendered > 0)
+    if (num_rendered > 0) {
         identifyTileRanges<<<(num_rendered + 255) / 256, 256>>>(
             num_rendered, binningState.point_list_keys, imgState.ranges);
-    CHECK_CUDA(, debug)
+        CHECK_CUDA(, debug);
+    }
 
     // Let each tile blend its range of Gaussians independently in parallel
     CHECK_CUDA(FORWARD::render(tile_grid,
@@ -306,7 +308,7 @@ int CudaRasterizer::Rasterizer::forward(std::function<char *(size_t)> geometryBu
                                geomState.mus,
                                imgState.n_contrib,
                                out_color),
-               debug)
+               debug);
 
     return num_rendered;
 }
@@ -374,7 +376,7 @@ void CudaRasterizer::Rasterizer::backward(const int P,
                                 (float4 *)dL_dconic,
                                 dL_dopacity,
                                 dL_dmu),
-               debug)
+               debug);
 
     // Take care of the rest of preprocessing. Was the precomputed covariance
     // given to us or a scales/rot pair? If precomputed, pass that. If not,
@@ -402,5 +404,5 @@ void CudaRasterizer::Rasterizer::backward(const int P,
                                     (glm::vec3 *)dL_dscale,
                                     (glm::vec4 *)dL_drot,
                                     mode),
-               debug)
+               debug);
 }

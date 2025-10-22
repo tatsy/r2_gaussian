@@ -253,9 +253,10 @@ int CudaVoxelizer::Voxelizer::forward(std::function<char *(size_t)> geometryBuff
                                                 radii_x,
                                                 radii_y,
                                                 radii_z,
-                                                tile_grid) CHECK_CUDA(, debug)
+                                                tile_grid);
+    CHECK_CUDA(, debug);
 
-        int bit = getHigherMsb(tile_grid.x * tile_grid.y * tile_grid.z);
+    int bit = getHigherMsb(tile_grid.x * tile_grid.y * tile_grid.z);
 
     // Sort complete list of (duplicated) Gaussian indices by keys
     CHECK_CUDA(cub::DeviceRadixSort::SortPairs(binningState.list_sorting_space,
@@ -267,15 +268,16 @@ int CudaVoxelizer::Voxelizer::forward(std::function<char *(size_t)> geometryBuff
                                                num_rendered,
                                                0,
                                                32 + bit),
-               debug)
+               debug);
 
     CHECK_CUDA(cudaMemset(imgState.ranges, 0, tile_grid.x * tile_grid.y * tile_grid.z * sizeof(uint2)), debug);
 
     // Identify start and end of per-tile workloads in sorted list
-    if (num_rendered > 0)
+    if (num_rendered > 0) {
         identifyTileRanges<<<(num_rendered + 255) / 256, 256>>>(
             num_rendered, binningState.point_list_keys, imgState.ranges);
-    CHECK_CUDA(, debug)
+        CHECK_CUDA(, debug);
+    }
 
     // Let each tile blend its range of Gaussians independently in parallel
     CHECK_CUDA(FORWARD::render(tile_grid,
@@ -289,7 +291,7 @@ int CudaVoxelizer::Voxelizer::forward(std::function<char *(size_t)> geometryBuff
                                geomState.conic_opacity,
                                imgState.n_contrib,
                                out_volume),
-               debug)
+               debug);
 
     return num_rendered;
 }

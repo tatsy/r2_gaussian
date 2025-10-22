@@ -1,2 +1,2 @@
-from .rasterization import GaussianRasterizationSettings, GaussianRasterizer
-from .voxelization import GaussianVoxelizationSettings, GaussianVoxelizer
+from .voxelization import GaussianVoxelizer, GaussianVoxelizationSettings
+from .rasterization import GaussianRasterizer, GaussianRasterizationSettings

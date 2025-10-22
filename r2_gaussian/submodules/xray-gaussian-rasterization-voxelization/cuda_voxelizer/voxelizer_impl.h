@@ -11,10 +11,13 @@
 
 #pragma once
 
+#include <cstdint>
 #include <iostream>
 #include <vector>
-#include "voxelizer.h"
+
 #include <cuda_runtime_api.h>
+
+#include "voxelizer.h"
 
 namespace CudaVoxelizer {
 template <typename T>

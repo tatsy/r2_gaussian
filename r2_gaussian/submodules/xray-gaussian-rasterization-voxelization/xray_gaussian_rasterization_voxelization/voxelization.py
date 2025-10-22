@@ -10,16 +10,14 @@
 #
 
 from typing import NamedTuple
-import torch.nn as nn
+
 import torch
-from . import _C
+import torch.nn as nn
+import xray_gaussian_rasterization_voxelization_cuda as _C
 
 
 def cpu_deep_copy_tuple(input_tuple):
-    copied_tensors = [
-        item.cpu().clone() if isinstance(item, torch.Tensor) else item
-        for item in input_tuple
-    ]
+    copied_tensors = [item.cpu().clone() if isinstance(item, torch.Tensor) else item for item in input_tuple]
     return tuple(copied_tensors)
 
 
@@ -90,9 +88,7 @@ class _VoxelizeGaussians(torch.autograd.Function):
 
         # Invoke C++/CUDA rasterizer
         if voxel_settings.debug:
-            cpu_args = cpu_deep_copy_tuple(
-                args
-            )  # Copy them before they can be corrupted
+            cpu_args = cpu_deep_copy_tuple(args)  # Copy them before they can be corrupted
             try:
                 (
                     num_rendered,
@@ -105,10 +101,8 @@ class _VoxelizeGaussians(torch.autograd.Function):
                     imgBuffer,
                 ) = _C.voxelize_gaussians(*args)
             except Exception as ex:
-                torch.save(cpu_args, "snapshot_fw.dump")
-                print(
-                    "\nAn error occured in forward. Please forward snapshot_fw.dump for debugging."
-                )
+                torch.save(cpu_args, 'snapshot_fw.dump')
+                print('\nAn error occured in forward. Please forward snapshot_fw.dump for debugging.')
                 raise ex
         else:
             (
@@ -143,7 +137,6 @@ class _VoxelizeGaussians(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_out_color, _):
-
         # Restore necessary values from context
         num_rendered = ctx.num_rendered
         voxel_settings = ctx.voxel_settings
@@ -188,9 +181,7 @@ class _VoxelizeGaussians(torch.autograd.Function):
 
         # Compute gradients for relevant tensors by invoking backward method
         if voxel_settings.debug:
-            cpu_args = cpu_deep_copy_tuple(
-                args
-            )  # Copy them before they can be corrupted
+            cpu_args = cpu_deep_copy_tuple(args)  # Copy them before they can be corrupted
             try:
                 (
                     grad_opacities,
@@ -200,10 +191,8 @@ class _VoxelizeGaussians(torch.autograd.Function):
                     grad_rotations,
                 ) = _C.voxelize_gaussians_backward(*args)
             except Exception as ex:
-                torch.save(cpu_args, "snapshot_bw.dump")
-                print(
-                    "\nAn error occured in backward. Writing snapshot_bw.dump for debugging.\n"
-                )
+                torch.save(cpu_args, 'snapshot_bw.dump')
+                print('\nAn error occured in backward. Writing snapshot_bw.dump for debugging.\n')
                 raise ex
         else:
             (
@@ -238,15 +227,12 @@ class GaussianVoxelizer(nn.Module):
         rotations=None,
         cov3D_precomp=None,
     ):
-
         voxel_settings = self.voxel_settings
 
         if ((scales is None or rotations is None) and cov3D_precomp is None) or (
             (scales is not None or rotations is not None) and cov3D_precomp is not None
         ):
-            raise Exception(
-                "Please provide exactly one of either scale/rotation pair or precomputed 3D covariance!"
-            )
+            raise Exception('Please provide exactly one of either scale/rotation pair or precomputed 3D covariance!')
 
         if scales is None:
             scales = torch.Tensor([])

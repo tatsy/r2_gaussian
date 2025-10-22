@@ -9,21 +9,23 @@
  * For inquiries contact  george.drettakis@inria.fr
  */
 
-#include <math.h>
-#include <torch/extension.h>
+#include <cmath>
 #include <cstdio>
 #include <sstream>
 #include <iostream>
 #include <tuple>
-#include <stdio.h>
-#include <cuda_runtime_api.h>
+#include <cstdio>
 #include <memory>
-#include "cuda_voxelizer/config.h"
-#include "cuda_voxelizer/voxelizer.h"
 #include <fstream>
 #include <string>
 #include <functional>
+
+#include <torch/extension.h>
+#include <cuda_runtime_api.h>
+
 #include "utility.h"
+#include "cuda_voxelizer/config.h"
+#include "cuda_voxelizer/voxelizer.h"
 
 std::tuple<int, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
 VoxelizeGaussiansCUDA(const torch::Tensor &means3D,
@@ -81,17 +83,17 @@ VoxelizeGaussiansCUDA(const torch::Tensor &means3D,
                                                      center_x,
                                                      center_y,
                                                      center_z,
-                                                     means3D.contiguous().data<float>(),
-                                                     opacity.contiguous().data<float>(),
+                                                     means3D.contiguous().data_ptr<float>(),
+                                                     opacity.contiguous().data_ptr<float>(),
                                                      scales.contiguous().data_ptr<float>(),
                                                      scale_modifier,
                                                      rotations.contiguous().data_ptr<float>(),
-                                                     cov3D_precomp.contiguous().data<float>(),
+                                                     cov3D_precomp.contiguous().data_ptr<float>(),
                                                      prefiltered,
-                                                     out_volume.contiguous().data<float>(),
-                                                     radii_x.contiguous().data<int>(),
-                                                     radii_y.contiguous().data<int>(),
-                                                     radii_z.contiguous().data<int>(),
+                                                     out_volume.contiguous().data_ptr<float>(),
+                                                     radii_x.contiguous().data_ptr<int>(),
+                                                     radii_y.contiguous().data_ptr<int>(),
+                                                     radii_z.contiguous().data_ptr<int>(),
                                                      debug);
     }
 
@@ -144,25 +146,25 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
                                            center_x,
                                            center_y,
                                            center_z,
-                                           means3D.contiguous().data<float>(),
+                                           means3D.contiguous().data_ptr<float>(),
                                            scales.data_ptr<float>(),
                                            scale_modifier,
                                            rotations.data_ptr<float>(),
-                                           cov3D_precomp.contiguous().data<float>(),
-                                           radii_x.contiguous().data<int>(),
-                                           radii_y.contiguous().data<int>(),
-                                           radii_z.contiguous().data<int>(),
+                                           cov3D_precomp.contiguous().data_ptr<float>(),
+                                           radii_x.contiguous().data_ptr<int>(),
+                                           radii_y.contiguous().data_ptr<int>(),
+                                           radii_z.contiguous().data_ptr<int>(),
                                            reinterpret_cast<char *>(geomBuffer.contiguous().data_ptr()),
                                            reinterpret_cast<char *>(binningBuffer.contiguous().data_ptr()),
                                            reinterpret_cast<char *>(imageBuffer.contiguous().data_ptr()),
-                                           dL_dout_color.contiguous().data<float>(),
-                                           dL_dmeans3D_norm.contiguous().data<float>(),
-                                           dL_dconic3D.contiguous().data<float>(),
-                                           dL_dopacity.contiguous().data<float>(),
-                                           dL_dmeans3D.contiguous().data<float>(),
-                                           dL_dcov3D.contiguous().data<float>(),
-                                           dL_dscales.contiguous().data<float>(),
-                                           dL_drotations.contiguous().data<float>(),
+                                           dL_dout_color.contiguous().data_ptr<float>(),
+                                           dL_dmeans3D_norm.contiguous().data_ptr<float>(),
+                                           dL_dconic3D.contiguous().data_ptr<float>(),
+                                           dL_dopacity.contiguous().data_ptr<float>(),
+                                           dL_dmeans3D.contiguous().data_ptr<float>(),
+                                           dL_dcov3D.contiguous().data_ptr<float>(),
+                                           dL_dscales.contiguous().data_ptr<float>(),
+                                           dL_drotations.contiguous().data_ptr<float>(),
                                            debug);
     }
 

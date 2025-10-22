@@ -155,7 +155,7 @@ def main(args: argparse.Namespace):
     ct_file = output_dir / 'vol.npy'
     np.save(str(ct_file), ct)
 
-    with tifffile.TiffWriter(str(output_dir / 'vol.tif'), imagej=True) as tif:
+    with tifffile.TiffWriter(str(output_dir / 'vol.tif'), bigtiff=True) as tif:
         tif.write(
             ct,
             resolution=(1.0 / geo.dVoxel[1], 1.0 / geo.dVoxel[0]),

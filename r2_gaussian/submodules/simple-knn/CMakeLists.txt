@@ -1,19 +1,8 @@
-#
-# Copyright (C) 2023, Inria
-# GRAPHDECO research group, https://team.inria.fr/graphdeco
-# All rights reserved.
-#
-# This software is free for non-commercial, research and evaluation use 
-# under the terms of the LICENSE.md file.
-#
-# For inquiries contact  george.drettakis@inria.fr
-#
-
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
-project(${SKBUILD_PROJECT_NAME} VERSION ${SKBUILD_PROJECT_VERSION} LANGUAGES CUDA CXX)
+project(${SKBUILD_PROJECT_NAME} VERSION ${SKBUILD_PROJECT_VERSION} LANGUAGES CXX CUDA)
 
 # General settings
-set(BUILD_TARGET xray_gaussian_rasterization_voxelization_cuda)
+set(BUILD_TARGET simple_knn_cuda)
 add_definitions(-DTORCH_EXTENSION_NAME=${BUILD_TARGET})
 
 # CUDA settings
@@ -37,10 +26,8 @@ else()
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_CUDA_STANDARD 17)
 
 if(MSVC)
   add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/utf-8>")
@@ -57,38 +44,12 @@ find_library(TORCH_PYTHON_LIBRARY torch_python PATH "${TORCH_INSTALL_PREFIX}/lib
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 include_directories (${TORCH_INCLUDE_DIRS})
-Python_add_library(${BUILD_TARGET}
-  ext.cpp
-	utility.h
-	rasterize_points.cu
-	rasterize_points.h
-	voxelize_points.cu
-	voxelize_points.h
-	cuda_rasterizer/backward.h
-	cuda_rasterizer/backward.cu
-	cuda_rasterizer/forward.h
-	cuda_rasterizer/forward.cu
-	cuda_rasterizer/auxiliary.h
-	cuda_rasterizer/rasterizer_impl.cu
-	cuda_rasterizer/rasterizer_impl.h
-	cuda_rasterizer/rasterizer.h
-	cuda_voxelizer/backward.h
-	cuda_voxelizer/backward.cu
-	cuda_voxelizer/forward.h
-	cuda_voxelizer/forward.cu
-	cuda_voxelizer/auxiliary.h
-	cuda_voxelizer/voxelizer_impl.h
-	cuda_voxelizer/voxelizer_impl.cu
-	cuda_voxelizer/voxelizer.h
-)
+Python_add_library(${BUILD_TARGET} ext.cpp simple_knn.cu spatial.cu)
 
 target_link_libraries(${BUILD_TARGET} PRIVATE
   pybind11::headers
   ${TORCH_LIBRARIES}
   ${TORCH_PYTHON_LIBRARY})
-
-target_include_directories(${BUILD_TARGET} PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm)
 
 set_target_properties(${BUILD_TARGET} PROPERTIES
   INTERPROCEDURAL_OPTIMIZATION ON

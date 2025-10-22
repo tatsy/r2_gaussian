@@ -8,7 +8,6 @@
 #
 # For inquiries contact  george.drettakis@inria.fr
 #
-import sys
 import math
 
 import torch
@@ -19,10 +18,11 @@ from xray_gaussian_rasterization_voxelization import (
     GaussianRasterizationSettings,
 )
 
-sys.path.append('./')
 from r2_gaussian.arguments import PipelineParams
 from r2_gaussian.dataset.cameras import Camera
 from r2_gaussian.gaussian.gaussian_model import GaussianModel
+
+MAX_N_VOXELS = 256
 
 
 def query(
@@ -36,6 +36,64 @@ def query(
     """
     Query a volume with voxelization.
     """
+    if nVoxel[0] > MAX_N_VOXELS or nVoxel[1] > MAX_N_VOXELS or nVoxel[2] > MAX_N_VOXELS:
+        # Split the volume query into smaller sub-queries
+        center = torch.tensor(center, dtype=torch.float32)
+        sVoxel = torch.tensor(sVoxel, dtype=torch.float32)
+        nVoxel = torch.tensor(nVoxel, dtype=torch.int32)
+        bbox_min = center - 0.5 * sVoxel
+        bbox_max = center + 0.5 * sVoxel
+
+        n_tile_z = (nVoxel[2] + MAX_N_VOXELS - 1) // MAX_N_VOXELS
+        n_tile_y = (nVoxel[1] + MAX_N_VOXELS - 1) // MAX_N_VOXELS
+        n_tile_x = (nVoxel[0] + MAX_N_VOXELS - 1) // MAX_N_VOXELS
+
+        vol = torch.zeros(
+            (nVoxel[0], nVoxel[1], nVoxel[2]),
+            dtype=torch.float32,
+            device=pc.get_xyz.device,
+        )
+        radii = []
+        for tz in range(n_tile_z):
+            for ty in range(n_tile_y):
+                for tx in range(n_tile_x):
+                    sub_nVoxel = torch.zeros(3, dtype=torch.int32)
+                    sub_sVoxel = torch.zeros(3, dtype=torch.float32)
+                    sub_center = torch.zeros(3, dtype=torch.float32)
+                    for dim, n_tile, t in zip([0, 1, 2], [n_tile_x, n_tile_y, n_tile_z], [tx, ty, tz]):
+                        start_idx = t * MAX_N_VOXELS
+                        end_idx = min((t + 1) * MAX_N_VOXELS, int(nVoxel[dim]))
+                        sub_nVoxel[dim] = end_idx - start_idx
+                        sub_sVoxel[dim] = sVoxel[dim] * float(sub_nVoxel[dim]) / float(nVoxel[dim])
+                        sub_center[dim] = bbox_min[dim] + (
+                            (start_idx + 0.5 * sub_nVoxel[dim]) * sVoxel[dim] / float(nVoxel[dim])
+                        )
+
+                    sub_result = query(
+                        pc=pc,
+                        center=sub_center.tolist(),
+                        nVoxel=sub_nVoxel.tolist(),
+                        sVoxel=sub_sVoxel.tolist(),
+                        pipe=pipe,
+                        scaling_modifier=scaling_modifier,
+                    )
+
+                    vol[
+                        tx * MAX_N_VOXELS : tx * MAX_N_VOXELS + sub_nVoxel[0],
+                        ty * MAX_N_VOXELS : ty * MAX_N_VOXELS + sub_nVoxel[1],
+                        tz * MAX_N_VOXELS : tz * MAX_N_VOXELS + sub_nVoxel[2],
+                    ] = sub_result['vol']
+                    radii.append(torch.stack(sub_result['radii'], dim=0))
+
+        # Combine results
+        radii = torch.stack(radii, dim=0).max(dim=0)[0]
+        radii = (radii[0], radii[1], radii[2])
+
+        return {
+            'vol': vol,
+            'radii': radii,
+        }
+
     voxel_settings = GaussianVoxelizationSettings(
         scale_modifier=scaling_modifier,
         nVoxel_x=int(nVoxel[0]),

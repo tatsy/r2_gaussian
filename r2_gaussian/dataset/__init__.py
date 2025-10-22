@@ -76,6 +76,7 @@ class Scene:
             dim=0,
         )
 
+    @torch.no_grad()
     def save(self, iteration, queryfunc):
         point_cloud_path = osp.join(self.model_path, 'point_cloud/iteration_{}'.format(iteration))
         self.gaussians.save_ply(osp.join(point_cloud_path, 'point_cloud.pickle'))  # Save pickle rather than ply
@@ -90,7 +91,7 @@ class Scene:
             vol_pred = vol_pred.flip(dims=[2]).permute(2, 1, 0)
 
             np.save(osp.join(point_cloud_path, 'vol_gt.npy'), vol_gt_a)
-            with tifffile.TiffWriter(osp.join(point_cloud_path, 'vol_gt.tif'), imagej=True) as tif:
+            with tifffile.TiffWriter(osp.join(point_cloud_path, 'vol_gt.tif'), bigtiff=True) as tif:
                 tif.write(
                     vol_gt.detach().cpu().numpy(),
                     resolution=(1.0 / self.scanner_cfg['dVoxel'][1], 1.0 / self.scanner_cfg['dVoxel'][0]),
@@ -102,7 +103,7 @@ class Scene:
             cv2.imwrite(osp.join(point_cloud_path, 'ref_gt.png'), vol_gt_ref.astype(np.uint8))
 
             np.save(osp.join(point_cloud_path, 'vol_pred.npy'), vol_pred_a)
-            with tifffile.TiffWriter(osp.join(point_cloud_path, 'vol_pred.tif'), imagej=True) as tif:
+            with tifffile.TiffWriter(osp.join(point_cloud_path, 'vol_pred.tif'), bigtiff=True) as tif:
                 tif.write(
                     vol_pred.detach().cpu().numpy(),
                     resolution=(1.0 / self.scanner_cfg['dVoxel'][1], 1.0 / self.scanner_cfg['dVoxel'][0]),

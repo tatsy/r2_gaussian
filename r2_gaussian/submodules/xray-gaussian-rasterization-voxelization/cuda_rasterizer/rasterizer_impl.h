@@ -11,10 +11,13 @@
 
 #pragma once
 
+#include <cstdint>
 #include <iostream>
 #include <vector>
-#include "rasterizer.h"
+
 #include <cuda_runtime_api.h>
+
+#include "rasterizer.h"
 
 namespace CudaRasterizer {
 template <typename T>

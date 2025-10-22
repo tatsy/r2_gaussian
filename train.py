@@ -142,6 +142,7 @@ def training(
 
         iter_end.record()
         torch.cuda.synchronize()
+        torch.cuda.empty_cache()
 
         with torch.no_grad():
             # Adaptive control

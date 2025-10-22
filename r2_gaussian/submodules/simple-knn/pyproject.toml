@@ -1,0 +1,36 @@
+[project]
+name = "simple_knn"
+version = "1.0.0"
+description = "Simple kNN"
+readme = "README.md"
+authors = []
+license = {file = "LICENSE.md"}
+classifiers = [
+  'Programming Language :: Python :: 3.9',
+  'Programming Language :: Python :: 3.10',
+  'Programming Language :: Python :: 3.11',
+  'Programming Language :: Python :: 3.12',
+]
+requires-python = ">=3.9"
+dependencies = ["numpy", "torch>=1.4.0"]
+
+[tool.scikit-build]
+build-dir = "build"
+minimum-version = "0.10"
+ninja.make-fallback = true
+logging.level = "INFO"
+build.verbose = true
+
+[tool.scikit-build.cmake]
+version = ">=3.18"
+source-dir = "."
+args = ['-DCMAKE_BUILD_TYPE=Release']
+
+[tool.scikit-build.wheel]
+packages = ["simple_knn"]
+license-files = ["LICENSE.md"]
+exclude = ["**/.mypy_cache/**", "**/build/**", "**/.vscode/**", "**/dist/**"]
+
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.10", "cmake", "ninja"]
+build-backend = "scikit_build_core.build"
